@@ -20,19 +20,36 @@ import plotly.graph_objs as go
 import numpy as np
 import pandas as pd
 
+import datetime
+
+currentDateTime = datetime.datetime.now()
+date = currentDateTime.date()
+current_year = date.year
+
 df = pd.read_csv('database.csv')
 
-print(df.columns)
+print(df['Data de Nascimento'])
+df['Data de Nascimento'].apply(lambda x: pd.to_datetime(x))
+
+#df.drop(["Faixa Etária"], axis=1, inplace=True)
+
+df['idade'] = current_year - pd.DatetimeIndex(df['Data de Nascimento']).year
+
+print(df['idade'])
+
+df['Faixa Etária'] = None
+
+df.loc[df.idade < 12, 'Faixa Etária'] = 'Criança'
+df.loc[(df.idade >= 12) & (df.idade < 16), 'Faixa Etária'] = 'Adolecente'
+df.loc[(df.idade >= 16) & (df.idade <= 30), 'Faixa Etária'] = 'Jovem'
+df.loc[df.idade > 30, 'Faixa Etária'] = 'Adulto'
+
+print(df['Faixa Etária'])
 
 select_sex_columns = ['Masculino','Feminino']
 
 
-select_faixa_etaria_columns = {
-    'Criança':'Criança',
-    'Adolecente':'Adolecente',
-    'Jovem': 'Jovem',
-    'Adulto': 'Adulto'
-}
+select_faixa_etaria_columns = ['Criança', 'Adolecente', 'Jovem','Adulto']
 
 select_conver = np.unique(df['Local de conversão'])
 select_irmao_que = np.unique(df['Esta sendo'])
@@ -123,7 +140,7 @@ app.layout = dbc.Container(
                              ),
                             html.P('Faixa Étaria:'),
                             dcc.Dropdown(id='location-dropdown_faix',
-                                         options=[{'label': j, 'value':i} for i, j in select_faixa_etaria_columns.items()],
+                                         options=[{'label': i, 'value':i} for i in select_faixa_etaria_columns],
                                          style={'margin-top':'10px'}
                              )
                         ])
@@ -248,7 +265,7 @@ def plot_graph(plot_type, select):
     return fig2
 
 def update_table(new_data):
-    new_data = new_data[['Nome', 'Telefone', 'Esta sendo', 'Local de conversão']]
+    new_data = new_data[['Nome', 'Telefone', 'Estado Civil', 'Esta sendo', 'Local de conversão']]
     tab = dash_table.DataTable(
                      id='table',
                      columns=[{'id':i, 'name': i} for i in new_data.columns],
