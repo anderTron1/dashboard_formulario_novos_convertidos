@@ -7,8 +7,8 @@ Created on Thu Feb 17 07:51:50 2022
 """
 
 import dash
-import dash_core_components as dcc
-import dash_html_components as html, dash_table
+from dash import dcc
+from dash import html, dash_table
 from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 
@@ -20,6 +20,9 @@ import plotly.graph_objs as go
 import numpy as np
 import pandas as pd
 
+import PySimpleGUI as sg
+import os
+
 import datetime
 
 currentDateTime = datetime.datetime.now()
@@ -30,6 +33,7 @@ df = pd.read_csv('database.csv')
 
 print(df['Data de Nascimento'])
 df['Data de Nascimento'].apply(lambda x: pd.to_datetime(x))
+df.rename(columns={'Local de conversão': 'conversão'}, inplace=True)
 
 #df.drop(["Faixa Etária"], axis=1, inplace=True)
 
@@ -51,11 +55,11 @@ select_sex_columns = ['Masculino','Feminino']
 
 select_faixa_etaria_columns = ['Criança', 'Adolecente', 'Jovem','Adulto']
 
-select_conver = np.unique(df['Local de conversão'])
+select_conver = np.unique(df['conversão'])
 select_irmao_que = np.unique(df['Esta sendo'])
 
 select_type = [
-    'Sexo', 'Estado Civil', 'Faixa Etária', 'Esta sendo', 'Local de conversão'
+    'Sexo', 'Estado Civil', 'Faixa Etária', 'Esta sendo', 'conversão'
 ]
 
 select_plot = [
@@ -99,8 +103,46 @@ app.layout = dbc.Container(
                         html.H5('Formulario de novos convertidos')
                     ], style={})
                 ], md=5)
-            ]),
-        
+            ]),            
+            dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                                dbc.Row([
+                                    dbc.Col([                                    
+                                        html.Div([
+                                            html.P('Selecione os dados que deseja plotar:', style={'margin-top': '25px'}),
+                                            dcc.Dropdown(id='location-dropdown-select',
+                                                         options=[{'label': i, 'value':i} for i in select_type],
+                                                         style={'margin-top':'10px'}
+                                                         ),
+                                            
+                                        ])
+                                    ]),
+                                    dbc.Col([                                    
+                                        html.Div([
+                                            html.P('Selecione a forma que deseja plotar:', style={'margin-top': '25px'}),
+                                            dcc.Dropdown(id='location-dropdown-select-plot',
+                                                         options=[{'label': i, 'value':i} for i in select_plot],
+                                                         style={'margin-top':'10px'}
+                                                         ),
+                                            
+                                        ])
+                                    ])
+                                ]),
+                        ]),
+                        html.Div([
+                                html.P('Analise grafica:', style={'margin-top': '25px'}),
+                                dcc.Graph(id='line-graph', figure=fig2)
+                        ]) 
+                    ], color='light', outline=True, style={'margin-top': '10px',
+                                                           'box-shadow': '0 4px 4px 0 rgb(0,0,0,0.15), 0 4px 20px 0 rgba(0,0,0,0.19'}
+                    )
+            ], md=12),#total da largura 
+                                                                
+        ], md=6, style={'padding':'15px'}),
+                                                           
+        dbc.Col([
+            html.H3('FILTRAR INFORMAÇÕES'),
             dbc.Row([
                 dbc.Col([
                     dbc.Card([
@@ -167,50 +209,29 @@ app.layout = dbc.Container(
                                                            })
                 ], md=4),#total da largura 
             ]),
-            html.H5(id='cont-data'),
-            
-            dbc.Col([
-                    dbc.Card([
-                        dbc.CardBody([
-                                dbc.Row([
-                                    dbc.Col([                                    
-                                        html.Div([
-                                            html.P('Selecione os dados que deseja plotar:', style={'margin-top': '25px'}),
-                                            dcc.Dropdown(id='location-dropdown-select',
-                                                         options=[{'label': i, 'value':i} for i in select_type],
-                                                         style={'margin-top':'10px'}
-                                                         ),
-                                            
-                                        ])
-                                    ]),
-                                    dbc.Col([                                    
-                                        html.Div([
-                                            html.P('Selecione a forma que deseja plotar:', style={'margin-top': '25px'}),
-                                            dcc.Dropdown(id='location-dropdown-select-plot',
-                                                         options=[{'label': i, 'value':i} for i in select_plot],
-                                                         style={'margin-top':'10px'}
-                                                         ),
-                                            
-                                        ])
-                                    ])
-                                ]),
-                        ]),
-                        html.Div([
-                                html.P('Analise grafica:', style={'margin-top': '25px'}),
-                                dcc.Graph(id='line-graph', figure=fig2)
-                        ]) 
-                    ], color='light', outline=True, style={'margin-top': '10px',
-                                                           'box-shadow': '0 4px 4px 0 rgb(0,0,0,0.15), 0 4px 20px 0 rgba(0,0,0,0.19'}
-                    )
-            ], md=12),#total da largura 
-                                                                
-        ], md=6, style={'padding':'15px'}),
-                                                           
-        dbc.Col([
-            html.H3('TABELA COM INFORMAÇÕES FILTRADAS'),
+            html.Br(),
+            dbc.Row([
+                dbc.Col([
+                    html.Div([
+                        dcc.Upload(id='upload-data',
+                                   children=html.Button('Carregar arquivo', n_clicks=0),
+                                   multiple=True)
+                    ])
+                ], md=4),
+                
+                dbc.Col([
+                    html.Div([
+                        html.Button('Baixar tabela',id='button-save-excel', n_clicks=0),
+                        dcc.Download(id='download-excel'), 
+                    ])
+                ], md=4),                    
+            ]),
+            html.Br(),
             html.Div(
                 id='update-table',
-            )
+            ),
+            html.H5(id='cont-data')
+            
         ], md=6, style={'padding':'15px'})
                             
         
@@ -265,7 +286,7 @@ def plot_graph(plot_type, select):
     return fig2
 
 def update_table(new_data):
-    new_data = new_data[['Nome', 'Telefone', 'Estado Civil', 'Esta sendo', 'Local de conversão']]
+    new_data = new_data[['Nome', 'Telefone', 'Estado Civil', 'Esta sendo', 'conversão']]
     tab = dash_table.DataTable(
                      id='table',
                      columns=[{'id':i, 'name': i} for i in new_data.columns],
@@ -283,6 +304,16 @@ def update_table(new_data):
                          )
     return tab
 
+@app.callback(
+    Output('download-excel', 'data'),
+    Input('button-save-excel', 'n_clicks'),
+    prevent_initial_call=True,
+)
+def save_table(n_clickes):
+    new_data = df[['Nome', 'Telefone', 'Estado Civil', 'Rua', 'Bairro', 'Número', 'Ponto de Referência']]
+    
+    return dcc.send_data_frame(new_data.to_excel, "Novos_Convertidos.xlsx", sheet_name="Sheet_name_1", 
+                               index=False)
 
 @app.callback(
     [
@@ -305,7 +336,7 @@ def update_graphs_table(select_date_ini, select_date_fin,select_sex, select_faix
     dic = {
         'Sexo': select_sex,
         'Faixa Etária': select_faix,
-        'Local de conversão':select_conv,
+        'conversão':select_conv,
         'Esta sendo': select_type_conv
         }
     
