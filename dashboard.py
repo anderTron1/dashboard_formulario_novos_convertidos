@@ -9,7 +9,7 @@ Created on Thu Feb 17 07:51:50 2022
 import dash
 from dash import dcc
 from dash import html, dash_table
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 
 import plotly.express as px
@@ -20,8 +20,9 @@ import plotly.graph_objs as go
 import numpy as np
 import pandas as pd
 
-import PySimpleGUI as sg
+import base64
 import os
+import io
 
 import datetime
 
@@ -29,26 +30,26 @@ currentDateTime = datetime.datetime.now()
 date = currentDateTime.date()
 current_year = date.year
 
-df = pd.read_csv('database.csv')
+UPLOAD_DIRECTORY = 'database'
 
-print(df['Data de Nascimento'])
-df['Data de Nascimento'].apply(lambda x: pd.to_datetime(x))
-df.rename(columns={'Local de conversão': 'conversão'}, inplace=True)
+df = pd.read_csv(UPLOAD_DIRECTORY+'/database.csv')
 
-#df.drop(["Faixa Etária"], axis=1, inplace=True)
+def transforme_df(df):
+    df['Data de Nascimento'].apply(lambda x: pd.to_datetime(x))
+    df.rename(columns={'Local de conversão': 'conversão'}, inplace=True)
+    
+    #df.drop(["Faixa Etária"], axis=1, inplace=True)
+    
+    df['idade'] = current_year - pd.DatetimeIndex(df['Data de Nascimento']).year
+    
+    df['Faixa Etária'] = None
+    
+    df.loc[df.idade < 12, 'Faixa Etária'] = 'Criança'
+    df.loc[(df.idade >= 12) & (df.idade < 16), 'Faixa Etária'] = 'Adolecente'
+    df.loc[(df.idade >= 16) & (df.idade <= 30), 'Faixa Etária'] = 'Jovem'
+    df.loc[df.idade > 30, 'Faixa Etária'] = 'Adulto'
 
-df['idade'] = current_year - pd.DatetimeIndex(df['Data de Nascimento']).year
-
-print(df['idade'])
-
-df['Faixa Etária'] = None
-
-df.loc[df.idade < 12, 'Faixa Etária'] = 'Criança'
-df.loc[(df.idade >= 12) & (df.idade < 16), 'Faixa Etária'] = 'Adolecente'
-df.loc[(df.idade >= 16) & (df.idade <= 30), 'Faixa Etária'] = 'Jovem'
-df.loc[df.idade > 30, 'Faixa Etária'] = 'Adulto'
-
-print(df['Faixa Etária'])
+transforme_df(df)
 
 select_sex_columns = ['Masculino','Feminino']
 
@@ -70,7 +71,8 @@ select_plot = [
 
 
 quant = df.Sexo.value_counts()
-print(quant)
+
+
 
 fig2 = go.Figure(layout={'template': 'plotly_dark'})
 fig2.add_trace(go.Bar(x=quant.keys(), y=quant))
@@ -226,6 +228,7 @@ app.layout = dbc.Container(
                     ])
                 ], md=4),                    
             ]),
+            html.Div(id='output-data-upload'),
             html.Br(),
             html.Div(
                 id='update-table',
@@ -304,6 +307,36 @@ def update_table(new_data):
                          )
     return tab
 
+def parse_contents(contents, filename):
+    content_type, content_string = contents.split(',')
+
+    decoded = base64.b64decode(content_string)
+    try:
+        if 'csv' in filename:
+            # Assume that the user uploaded a CSV file
+            df_loaded = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
+            transforme_df(df_loaded)
+            '''elif 'xls' in filename:
+            # Assume that the user uploaded an excel file
+            new_df = pd.read_excel(io.BytesIO(decoded))'''
+            
+            df_new = pd.concat([df, df_loaded])
+            df_new.drop_duplicates(subset='Nome', inplace=True)
+            
+            df_new.to_csv(UPLOAD_DIRECTORY + '/database.csv')
+            
+            #f = pd.read_csv(UPLOAD_DIRECTORY + '/databases1.csv')
+            
+    except Exception as e:
+        print(e)
+        return html.Div([
+            'There was an error processing this file.'
+        ])
+    
+    return html.Div(['Arquivo carregado... Atualize a pagina'])
+    
+    
+
 @app.callback(
     Output('download-excel', 'data'),
     Input('button-save-excel', 'n_clicks'),
@@ -317,7 +350,7 @@ def save_table(n_clickes):
 
 @app.callback(
     [
-     Output('update-table', 'children'),
+     Output('update-table', 'children'), 
      Output('cont-data', 'children')
     ],
     [
@@ -347,6 +380,16 @@ def update_graphs_table(select_date_ini, select_date_fin,select_sex, select_faix
     cont = len(new_db)
     
     return update_table(new_db), 'Quantidade de registro conforme a filtragem: {}'.format(cont)
+
+@app.callback(Output('output-data-upload', 'children'),
+              Input('upload-data', 'contents'),
+              State('upload-data', 'filename')
+)
+def update_output(list_of_contents, list_of_names):
+    if list_of_contents is not None:
+        children = [
+            parse_contents(c, n) for c, n in zip(list_of_contents, list_of_names)]
+        return children
 
 if __name__ == "__main__":
     app.run_server(debug=True, host='localhost')
