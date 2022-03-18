@@ -258,19 +258,7 @@ a:hover {
   border-color: #1EAEDB;
 }
 /* Forms –––––––––––––––––––––––––––––––––––––––––––––––––– */
-input[type="email"], input[type="number"], input[type="search"], input[type="text"], input[type="tel"], input[type="url"], input[type="password"], textarea, select {
-  height: 38px;
-  padding: 6px 10px;
- /* The 6px vertically centers text on FF, ignored by Webkit */
-  background-color: #fff;
-  border: 1px solid #D1D1D1;
-  border-radius: 4px;
-  box-shadow: none;
-  box-sizing: border-box;
-  font-family: inherit;
-  font-size: inherit;
- /*https://stackoverflow.com/questions/6080413/why-doesnt-input-inherit-the-font-from-body*/
-}
+
 /* Removes awkward default styles on some inputs for iOS */
 input[type="email"], input[type="number"], input[type="search"], input[type="text"], input[type="tel"], input[type="url"], input[type="password"], textarea {
   -webkit-appearance: none;

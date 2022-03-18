@@ -26,6 +26,8 @@ import io
 
 import datetime
 
+from card_format import Card_format
+
 class BaseBlock:
     def __init__(self, app=None):
         self.app = app
@@ -92,18 +94,45 @@ class BaseBlock:
                 )
             ]
         )
+    def build_tabs_card(self):
+        return html.Div(
+            id='tabs-card',
+            className='tabs_card',
+            children=[
+                dcc.Tabs(
+                    id='app-tabs-card',
+                    value='tab1-card',
+                    className='custom-tabs-card',
+                    children=[
+                        dcc.Tab(
+                            id='Specs-tab',
+                            label='Frente do cartão',
+                            value='tab1-card',
+                            className='custom-tab',
+                            selected_className='custom-tab--selected',
+                        ),
+                        dcc.Tab(
+                            id='Control-chart-tab',
+                            label='Fundo do Cartão',
+                            value='tab2-card',
+                            className='custom-tab',
+                            selected_className='custom-tab--selected',
+                        )
+                    ]
+                )
+            ]
+        )
 
     def transforme_df(self, df):
         df['Data de Nascimento'].apply(lambda x: pd.to_datetime(x))
-        df['fixa preenchida no dia'].apply(lambda x: pd.to_datetime(x))
-        print(self.df['fixa preenchida no dia'].min())
-        print(self.df['fixa preenchida no dia'].max())
+        df['Carimbo de data/hora'] =df['Carimbo de data/hora'].apply(lambda x: x.replace('/', '-'))
+        df['Carimbo de data/hora'] = pd.to_datetime(df['Carimbo de data/hora'], format='%Y-%m-%d %H:%M:%S PM GMT-3')
+        
         df.rename(columns={'Local de conversão': 'conversão'}, inplace=True)
         
         #df.drop(["Faixa Etária"], axis=1, inplace=True)
         
         df['idade'] = self.current_year - pd.DatetimeIndex(df['Data de Nascimento']).year
-        print(df['idade'])
         
         df['Faixa Etária'] = None
         
@@ -256,20 +285,20 @@ class BaseBlock:
                                     html.P('Data inicio'),
                                         dcc.DatePickerSingle(
                                             id='date-inicio-picker',
-                                            min_date_allowed=self.df['fixa preenchida no dia'].min(),
-                                            max_date_allowed=self.df['fixa preenchida no dia'].max(),
-                                            initial_visible_month=self.df['fixa preenchida no dia'].min(),
-                                            date=self.df['fixa preenchida no dia'].min(),
+                                            min_date_allowed=self.df['Carimbo de data/hora'].min(),
+                                            max_date_allowed=self.df['Carimbo de data/hora'].max(),
+                                            initial_visible_month=self.df['Carimbo de data/hora'].min(),
+                                            date=self.df['Carimbo de data/hora'].min(),
                                             display_format='MMMM D, YYYY',
                                             style={'border':'0px solid black'}
                                         ),
                                         html.P('Data Final'),
                                         dcc.DatePickerSingle(
                                             id='date-fim-picker',
-                                            min_date_allowed=self.df['fixa preenchida no dia'].min(),
-                                            max_date_allowed=self.df['fixa preenchida no dia'].max(),
-                                            initial_visible_month=self.df['fixa preenchida no dia'].max(),
-                                            date=self.df['fixa preenchida no dia'].max(),
+                                            min_date_allowed=self.df['Carimbo de data/hora'].min(),
+                                            max_date_allowed=self.df['Carimbo de data/hora'].max(),
+                                            initial_visible_month=self.df['Carimbo de data/hora'].max(),
+                                            date=self.df['Carimbo de data/hora'].max(),
                                             display_format='MMMM D, YYYY',
                                             style={'border':'0px solid black'}
                                         )
@@ -340,10 +369,149 @@ class BaseBlock:
                     html.H5(id='cont-data')
                     
                 ], md=6, style={'padding':'15px'})
-                                    
-                
             ])
     
+    def build_front_of_card(self):
+        return dbc.Card(id='front-of-card',children=[
+                    dbc.CardBody([
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label('Nome:',style={'display':'inline-block','margin-right':20})
+                            ], md=2),
+                            dbc.Col([
+                                dcc.Input(id='nome', type='text', placeholder='', style={'display':'inline-block', 'border': '1px solid black', 'size': '40'}),
+                            ], md=4)
+                        ]),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label('Atividade:',style={'display':'inline-block','margin-right':20})
+                            ], md=2),
+                            dbc.Col([
+                                dcc.Input(id='atividade', type='text', placeholder='', style={'display':'inline-block', 'border': '1px solid black'}),
+                            ], md=4),
+                            dbc.Col([
+                                html.Label('Nascimento:',style={'display':'inline-block','margin-right':20})
+                            ], md=2),
+                            dbc.Col([
+                                dcc.Input(id='nascimento', type='text', placeholder='', style={'display':'inline-block', 'border': '1px solid black'}),
+                            ], md=1)
+                        ]),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label('DOC. Identidade:',style={'display':'inline-block','margin-right':20})
+                            ], md=2),
+                            dbc.Col([
+                                dcc.Input(id='identidade', type='text', placeholder='', style={'display':'inline-block', 'border': '1px solid black'}),
+                            ], md=4),
+                            dbc.Col([
+                                html.Label('CPF:',style={'display':'inline-block','margin-right':20})
+                            ], md=2),
+                            dbc.Col([
+                                dcc.Input(id='cpf', type='text', placeholder='', style={'display':'inline-block', 'border': '1px solid black'}),
+                            ], md=1)
+                        ])
+                    ])
+                ])
+    def build_card_background(self):
+        return dbc.Card(id='card-background', children=[
+            dbc.CardBody([
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label('Pai:',style={'display':'inline-block','margin-right':20})
+                            ], md=2),
+                            dbc.Col([
+                                dcc.Input(id='pai', type='text', placeholder='', style={'display':'inline-block', 'border': '1px solid black'}),
+                            ], md=4)
+                        ]),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label('Mãe:',style={'display':'inline-block','margin-right':20})
+                            ], md=2),
+                            dbc.Col([
+                                dcc.Input(id='mae', type='text', placeholder='', style={'display':'inline-block', 'border': '1px solid black'}),
+                            ], md=4)
+                        ]),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label('Naturalidade:',style={'display':'inline-block','margin-right':20})
+                            ], md=2),
+                            dbc.Col([
+                                dcc.Input(id='naturalidade', type='text', placeholder='', style={'display':'inline-block', 'border': '1px solid black'}),
+                            ], md=4),
+                            dbc.Col([
+                                html.Label('Sexo:',style={'display':'inline-block','margin-right':20})
+                            ], md=2),
+                            dbc.Col([
+                                dcc.Input(id='sexo', type='text', placeholder='', style={'display':'inline-block', 'border': '1px solid black'}),
+                            ], md=1)
+                        ]),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label('Conversão:',style={'display':'inline-block','margin-right':20})
+                            ], md=2),
+                            dbc.Col([
+                                dcc.Input(id='conversao', type='text', placeholder='', style={'display':'inline-block', 'border': '1px solid black'}),
+                            ], md=4),
+                            dbc.Col([
+                                html.Label('Batismo Águas:',style={'display':'inline-block','margin-right':20})
+                            ], md=2),
+                            dbc.Col([
+                                dcc.Input(id='batismo-aguas', type='text', placeholder='', style={'display':'inline-block', 'border': '1px solid black'}),
+                            ], md=1)
+                        ])
+                    ])
+            ])
+    
+    def build_member_control(self):
+        return dbc.Row([
+            dbc.Col([
+                dcc.Interval(
+                            id="interval-component-card",
+                            interval=2 * 1000,  # in milliseconds
+                            n_intervals=50,  # start at batch 50
+                            disabled=True,
+                ),
+                self.build_tabs_card(),
+                dbc.Row(id='app-card'),
+                dcc.Store(id="n-interval-stage-card", data=50),
+                html.Br(),
+                dbc.Row([
+                    dbc.Col([
+                        html.Button('Gerar Imagens',id='button-img', n_clicks=1)
+                    ]),
+                    dbc.Col(
+                        html.Button('Gerar Imagens',id='button-img-fundo', n_clicks=1)
+                    )
+                ]),
+                html.Br(),
+                
+                html.Br(),
+                dbc.Card([
+                    dbc.CardBody([
+                        dbc.Row([
+                            dbc.Col([
+                                html.Div(
+                                    id='div-cartao-frente',
+                                    children=[html.Img(id='cartao-frente', src=app.get_asset_url('cartao_frente.jpeg'), style={'height':'210px', 'width':'290px'})]
+                                ),
+                            ], md=6),
+                            dbc.Col([
+                                html.Div(
+                                    html.Img(id='cartao-fundo', src=app.get_asset_url('cartao_fundo.jpeg'), style={'height':'210px', 'width':'290px'})
+                                ),
+                            ], md=6)
+                        ])
+                    ])
+                ]),
+                html.Br(),
+                html.Button('Gerar PDF',id='button-pdf', n_clicks=0),
+                
+            ]),
+            dbc.Col([
+                html.H2('Tabelas com informações')
+            ])
+        ])
+        
 class DashBoard_forms(BaseBlock):
     #instalação do dash
     def callbacks(self, app):
@@ -388,16 +556,19 @@ class DashBoard_forms(BaseBlock):
         def render_tab_content(tab_switch, stopped_interval):
             if tab_switch == "tab1":
                 return self.new_converts(), stopped_interval
-            return (
-                html.Div(
-                    id="status-container",
-                    children=[
-                        html.H2('Em construçao')
-                        
-                    ],
-                ),
-                stopped_interval,
-            )
+            
+            elif tab_switch == "tab2":
+                return (
+                    #html.Div(
+                    #    id="status-container",
+                    #    children=[
+                    
+                    self.build_member_control(),
+                    
+                    #    ],
+                    #),
+                    stopped_interval,
+                )
         # Update interval
         @app.callback(
             Output("n-interval-stage", "data"),
@@ -413,6 +584,36 @@ class DashBoard_forms(BaseBlock):
                 return cur_interval
         
             if tab_switch == "tab1":
+                return cur_interval
+            return cur_stage
+        
+        @app.callback(
+            [Output("app-card", "children"), Output("interval-component-card", "n_intervals")],
+            [Input("app-tabs-card", "value")],
+            [State("n-interval-stage-card", "data")],
+        )
+        def render_tab_content(tab_switch, stopped_interval):
+            if tab_switch == "tab1-card":
+                return self.build_front_of_card(), stopped_interval
+            
+            elif tab_switch == "tab2-card":
+                return self.build_card_background(), stopped_interval
+        
+        # Update interval
+        @app.callback(
+            Output("n-interval-stage-card", "data"),
+            [Input("app-tabs-card", "value")],
+            [
+                State("interval-component-card", "n_intervals"),
+                State("interval-component-card", "disabled"),
+                State("n-interval-stage", "data"),
+            ],
+        )
+        def update_interval_state(tab_switch, cur_interval, disabled, cur_stage):
+            if disabled:
+                return cur_interval
+        
+            if tab_switch == "tab1-card":
                 return cur_interval
             return cur_stage
         
@@ -477,7 +678,7 @@ class DashBoard_forms(BaseBlock):
             
         )
         def update_graphs_table(select_date_ini, select_date_fin,select_sex, select_faix, select_conv, select_type_conv):
-            new_db = self.df[(self.df['fixa preenchida no dia'] >= select_date_ini) & (self.df['fixa preenchida no dia'] <= select_date_fin)]
+            new_db = self.df[(self.df['Carimbo de data/hora'] >= select_date_ini) & (self.df['Carimbo de data/hora'] <= select_date_fin)]
             
             dic = {
                 'Sexo': select_sex,
@@ -503,7 +704,26 @@ class DashBoard_forms(BaseBlock):
                 children = [
                     self.parse_contents(c, n) for c, n in zip(list_of_contents, list_of_names)]
                 return children
-
+            
+        @app.callback(
+            Output('cartao-frente', 'src'),
+            Input('button-img', 'n_clicks'),
+            prevent_initial_call=True,
+        )
+        def btn_generate_image(n_clickes):
+            card = Card_format()
+            #inserir dados
+            #return (app.get_asset_url('cartao_frente.jpeg'))
+            card.editImage('assets/cartao_frente.jpeg', 'assets/fundo_frente.jpg')
+            #card.editImageFundo('assets/cartao_fundo.jpeg', 'assets/fundo_fundo.jpg')
+            
+            #Rotacionar imagem
+            card.trataImage("assets/fundo_frente.jpg")
+            #card.trataImage("assets/fundo_fundo.jpg", False)
+            #del card
+            
+            return 'assets/fundo_frente.jpg'
+        
     #def app_init(self):
     #    #self.callbacks(self.app)
     #    self.app.run_server(debug=True, host='localhost')

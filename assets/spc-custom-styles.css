@@ -133,7 +133,7 @@ body {
   width: 100%;
 }
 
-.custom-tabs {
+.custom-tabs, .custom-tabs-card {
   background-color: #1E2130;
   text-transform: uppercase;
   font-weight: 600;
@@ -421,6 +421,7 @@ body {
   width: 100%;
   height: calc(100vh - 10rem - 1px);
 }
+
 
 #app-content {
   background: inherit;
