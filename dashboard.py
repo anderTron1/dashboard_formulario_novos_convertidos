@@ -11,6 +11,7 @@ from dash import dcc
 from dash import html, dash_table
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
+from dash.exceptions import PreventUpdate
 
 import plotly.express as px
 
@@ -477,22 +478,19 @@ class BaseBlock:
                 html.Br(),
                 dbc.Row([
                     dbc.Col([
-                        html.Button('Gerar Imagens',id='button-img', n_clicks=1)
+                        html.Button('Gerar Imagens',id='button-img', n_clicks=0)
                     ]),
                     dbc.Col(
-                        html.Button('Gerar Imagens',id='button-img-fundo', n_clicks=1)
+                        html.Button('Gerar Imagens',id='button-img-fundo', n_clicks=0)
                     )
                 ]),
-                html.Br(),
-                
                 html.Br(),
                 dbc.Card([
                     dbc.CardBody([
                         dbc.Row([
                             dbc.Col([
                                 html.Div(
-                                    id='div-cartao-frente',
-                                    children=[html.Img(id='cartao-frente', src=app.get_asset_url('cartao_frente.jpeg'), style={'height':'210px', 'width':'290px'})]
+                                    html.Img(id='cartao-frente', src=app.get_asset_url('cartao_frente.jpeg'), style={'height':'210px', 'width':'290px'})
                                 ),
                             ], md=6),
                             dbc.Col([
@@ -504,8 +502,10 @@ class BaseBlock:
                     ])
                 ]),
                 html.Br(),
-                html.Button('Gerar PDF',id='button-pdf', n_clicks=0),
-                
+                dbc.Row([
+                    dbc.Col(html.Button('Gerar PDF',id='button-pdf', n_clicks=0), md=2),
+                    dbc.Col(html.Label(id='label-pdf-gerado'), md=3)
+                ])
             ]),
             dbc.Col([
                 html.H2('Tabelas com informações')
@@ -712,17 +712,68 @@ class DashBoard_forms(BaseBlock):
         )
         def btn_generate_image(n_clickes):
             card = Card_format()
-            #inserir dados
-            #return (app.get_asset_url('cartao_frente.jpeg'))
-            card.editImage('assets/cartao_frente.jpeg', 'assets/fundo_frente.jpg')
+            data = {
+                'name':"ANDRE LUIZ PIRES GUIMARAES",
+                'cargo': "DIACONO",
+                'data_nascimento': '15/07/1997',
+                'emisao_card':'14/03/2022',
+                'venci_card': '12/03/2027',
+                'rg':'15648154-15',
+                'cpf':'703.455.081-65'
+            }
+            card.editImage('database/modelos/cartao_frente.jpeg', 'database/modelos/fundo_frente.jpg', data)
             #card.editImageFundo('assets/cartao_fundo.jpeg', 'assets/fundo_fundo.jpg')
             
             #Rotacionar imagem
-            card.trataImage("assets/fundo_frente.jpg")
+            card.trataImage("database/modelos/fundo_frente.jpg")
             #card.trataImage("assets/fundo_fundo.jpg", False)
-            #del card
+            del card
+            img_filename = 'database/modelos/fundo_frente.jpg'
+            encoded_image = base64.b64encode(open(img_filename, 'rb').read())
             
-            return 'assets/fundo_frente.jpg'
+            return 'data:image/jpg;base64,{}'.format(encoded_image.decode())
+        
+        @app.callback(
+            Output('cartao-fundo', 'src'),
+            Input('button-img-fundo', 'n_clicks'),
+            prevent_initial_call=True,
+        )
+        def btn_generate_image(n_clickes):
+            card = Card_format()
+            data = {
+                'nome_pai':'RAMILTON RIBEIRO GUIMARAES',
+                'nome_mae':'JUCELIA PEREIRA PIRES',
+                'nacionalidade':'BRASILEIRO',
+                'sexo': 'MASCULINO',
+                'conversao':'15/04/2012',
+                'batismo':'15/02/2014'
+            }
+            card.editImageFundo('database/modelos/cartao_fundo.jpeg', 'database/modelos/fundo_fundo.jpg', data)
+            
+            #Rotacionar imagem
+            #card.trataImage("assets/fundo_frente.jpg")
+            card.trataImage("database/modelos/fundo_fundo.jpg", False)
+            del card
+            
+            img_filename = 'database/modelos/fundo_fundo.jpg'
+            encoded_image = base64.b64encode(open(img_filename, 'rb').read())
+            
+            return 'data:image/jpg;base64,{}'.format(encoded_image.decode())
+        
+        @app.callback(
+            Output('label-pdf-gerado', 'children'),
+            Input('button-pdf', 'n_clicks'),
+            prevent_initial_call=True,
+        )
+        def btn_generate_image(n_clickes):
+            if n_clickes is None:
+                raise PreventUpdate
+            else:
+                card = Card_format()
+                card.generate_pdf('database/modelos/fundo_frente.jpg','database/modelos/fundo_fundo.jpg')
+                
+                return 'pdf gerado com sucesso!'
+            
         
     #def app_init(self):
     #    #self.callbacks(self.app)
@@ -732,5 +783,5 @@ if __name__ == "__main__":
     app = dash.Dash(__name__, external_stylesheets=[dbc.themes.CYBORG])
     app.config['suppress_callback_exceptions']=True
     tesete =DashBoard_forms(app)
-    app.run_server(debug=True, host='localhost')
+    app.run_server(debug=True, host='localhost', use_reloader = True)
     
