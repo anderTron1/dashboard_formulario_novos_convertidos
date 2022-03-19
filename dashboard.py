@@ -29,6 +29,9 @@ import datetime
 
 from card_format import Card_format
 
+import pandas as pd
+from datetime import timedelta, date
+
 class BaseBlock:
     def __init__(self, app=None):
         self.app = app
@@ -410,8 +413,8 @@ class BaseBlock:
                             dbc.Col([
                                 dcc.Input(id='cpf', type='text', placeholder='', style={'display':'inline-block', 'border': '1px solid black'}),
                             ], md=1)
-                        ])
-                    ])
+                        ]),
+                    ]),
                 ])
     def build_card_background(self):
         return dbc.Card(id='card-background', children=[
@@ -478,7 +481,7 @@ class BaseBlock:
                 html.Br(),
                 dbc.Row([
                     dbc.Col([
-                        html.Button('Gerar Imagens',id='button-img', n_clicks=0)
+                        html.Button('Gerar Imagens',id='button-img', n_clicks=1)
                     ]),
                     dbc.Col(
                         html.Button('Gerar Imagens',id='button-img-fundo', n_clicks=0)
@@ -707,19 +710,41 @@ class DashBoard_forms(BaseBlock):
             
         @app.callback(
             Output('cartao-frente', 'src'),
-            Input('button-img', 'n_clicks'),
+            [Input('button-img', 'n_clicks'),
+             State('nome', 'value'),
+             State('atividade', 'value'),
+             State('nascimento', 'value'),
+             State('identidade', 'value'),
+             State('cpf', 'value')
+            ],
+            
             prevent_initial_call=True,
         )
-        def btn_generate_image(n_clickes):
+        def btn_generate_image(n_clickes, 
+                               value_name,
+                               value_atividade,
+                               value_nasc,
+                               value_ident,
+                               value_cpf):
             card = Card_format()
+            
+            current_date = date.today()
+            current_date = current_date.strftime('%d/%m/%Y')
+            
+            #sum_date = current_date + timedelta(days=10)
+            sum_date = pd.to_datetime(current_date) + pd.DateOffset(years=5)
+            
+            sum_date = sum_date.strftime('%d/%m/%Y')
+            
+            #if n_clickes == 1:
             data = {
-                'name':"ANDRE LUIZ PIRES GUIMARAES",
-                'cargo': "DIACONO",
-                'data_nascimento': '15/07/1997',
-                'emisao_card':'14/03/2022',
-                'venci_card': '12/03/2027',
-                'rg':'15648154-15',
-                'cpf':'703.455.081-65'
+                'name':value_name,
+                'cargo': value_atividade,
+                'data_nascimento': value_nasc,
+                'emisao_card':str(current_date),
+                'venci_card': str(sum_date),
+                'rg':value_ident,
+                'cpf':value_cpf
             }
             card.editImage('database/modelos/cartao_frente.jpeg', 'database/modelos/fundo_frente.jpg', data)
             #card.editImageFundo('assets/cartao_fundo.jpeg', 'assets/fundo_fundo.jpg')
@@ -735,18 +760,32 @@ class DashBoard_forms(BaseBlock):
         
         @app.callback(
             Output('cartao-fundo', 'src'),
-            Input('button-img-fundo', 'n_clicks'),
+            [
+                Input('button-img-fundo', 'n_clicks'),
+                State('pai', 'value'),
+                State('mae', 'value'),
+                State('naturalidade', 'value'),
+                State('sexo', 'value'),
+                State('conversao', 'value'),
+                State('batismo-aguas', 'value')
+            ],
             prevent_initial_call=True,
         )
-        def btn_generate_image(n_clickes):
+        def btn_generate_image(n_clickes,
+                               value_pai,
+                               value_mae,
+                               value_naturalidade,
+                               value_sexo,
+                               value_conversao,
+                               value_batismo):
             card = Card_format()
             data = {
-                'nome_pai':'RAMILTON RIBEIRO GUIMARAES',
-                'nome_mae':'JUCELIA PEREIRA PIRES',
-                'nacionalidade':'BRASILEIRO',
-                'sexo': 'MASCULINO',
-                'conversao':'15/04/2012',
-                'batismo':'15/02/2014'
+                'nome_pai':value_pai,
+                'nome_mae':value_mae,
+                'nacionalidade':value_naturalidade,
+                'sexo': value_sexo,
+                'conversao':value_conversao,
+                'batismo':value_batismo
             }
             card.editImageFundo('database/modelos/cartao_fundo.jpeg', 'database/modelos/fundo_fundo.jpg', data)
             
