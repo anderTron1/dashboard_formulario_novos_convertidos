@@ -181,6 +181,9 @@ class BaseBlock:
                          columns=[{'id':i, 'name': i} for i in new_data.columns],
                          data=new_data.to_dict('records'),
                          page_size=8,
+                         editable=False,              # allow editing of data inside all cells
+                         row_selectable="single",     # allow users to select 'multi' or 'single' rows
+                        
                          style_header={
                                         'backgroundColor': 'rgb(30, 30, 30)',
                                         'color': 'white',
@@ -385,7 +388,7 @@ class BaseBlock:
                                 html.Label('Nome:',style={'display':'inline-block','margin-right':20})
                             ], md=2),
                             dbc.Col([
-                                dcc.Input(id='nome', type='text', placeholder='', style={'display':'inline-block', 'border': '1px solid black', 'size': '40'}),
+                                dcc.Input(id='nome', type='text', value='', style={'display':'inline-block', 'border': '1px solid black', 'size': '40'}),
                             ], md=4)
                         ]),
                         dbc.Row([
@@ -393,7 +396,7 @@ class BaseBlock:
                                 html.Label('Atividade:',style={'display':'inline-block','margin-right':20})
                             ], md=2),
                             dbc.Col([
-                                dcc.Input(id='atividade', type='text', placeholder='', style={'display':'inline-block', 'border': '1px solid black'}),
+                                dcc.Input(id='atividade', type='text', value='', style={'display':'inline-block', 'border': '1px solid black'}),
                             ], md=4),
                             dbc.Col([
                                 html.Label('Nascimento:',style={'display':'inline-block','margin-right':20})
@@ -724,6 +727,40 @@ class DashBoard_forms(BaseBlock):
             
             return self.update_table('table-table-members',new_data), 'Quantidade de registro conforme a filtragem: {}'.format(cont)
 
+        @app.callback(
+            [Output('nome', 'value'),
+             Output('atividade', 'value'),
+             Output('nascimento', 'value'),
+             Output('identidade', 'value'),
+             Output('cpf', 'value')
+             ],
+            #Input('update-table-members', 'derived_virtual_selected_rows'),
+            #Input('update-table-members', 'derived_virtual_selected_row_ids'),
+            #Input('update-table-members', 'selected_rows'),
+            #Input('update-table-members', 'derived_virtual_indices'),
+            #Input('update-table-members', 'derived_virtual_row_ids'),
+            #Input('update-table-members', 'active_cell'),
+            Input('table-table-members', 'derived_virtual_selected_rows'),
+            prevent_initial_call=True,
+        )
+        def select_element_table_member(active_cell):
+            #row_id
+            if active_cell[0] != None:
+                #active_row_id = active_cell if active_cell else None
+                self.df_members['Data de Nascimento'].apply(lambda x: pd.to_datetime(x))
+                #self.df_members['Data de Nascimento'] = self.df_members['Data de Nascimento'].dt.strftime('%m/%d/%Y')
+                datas = self.df_members.loc[active_cell[0]]
+                
+                
+                name = str(datas['Nome do Membro'])
+                atividade = str(datas['Cargo Ministerial'])
+                nascimento =  str(datas['Data de Nascimento'])
+                identidade = str(datas['RG'])
+                cpf = str(datas['CPF'])
+                
+                return name, atividade, nascimento, identidade, cpf
+            
+            
         @app.callback(Output('output-data-upload', 'children'),
                       Input('upload-data', 'contents'),
                       State('upload-data', 'filename')
