@@ -173,10 +173,9 @@ class BaseBlock:
                                  data=[go.Scatter(x=data.keys(), y=data)])
         return fig 
     
-    def update_table(self,new_data):
-        new_data = new_data[['Nome', 'Telefone', 'Estado Civil', 'Esta sendo', 'conversão']]
+    def update_table(self,id_table, new_data):
         tab = dash_table.DataTable(
-                         id='table',
+                         id=id_table,
                          columns=[{'id':i, 'name': i} for i in new_data.columns],
                          data=new_data.to_dict('records'),
                          page_size=8,
@@ -696,7 +695,9 @@ class DashBoard_forms(BaseBlock):
             
             cont = len(new_db)
             
-            return self.update_table(new_db), 'Quantidade de registro conforme a filtragem: {}'.format(cont)
+            new_data = new_db[['Nome', 'Telefone', 'Estado Civil', 'Esta sendo', 'conversão']]
+            
+            return self.update_table('table-table',new_data), 'Quantidade de registro conforme a filtragem: {}'.format(cont)
 
         @app.callback(Output('output-data-upload', 'children'),
                       Input('upload-data', 'contents'),
