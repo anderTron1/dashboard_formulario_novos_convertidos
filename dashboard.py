@@ -43,6 +43,8 @@ class BaseBlock:
         self.UPLOAD_DIRECTORY = 'database'
         
         self.df = pd.read_csv(self.UPLOAD_DIRECTORY+'/database.csv')
+        self.df_new_selected = None
+        self.df_members = pd.read_csv(self.UPLOAD_DIRECTORY+'/cadastro de membros.csv')
 
         self.transforme_df(self.df)
         
@@ -182,14 +184,15 @@ class BaseBlock:
                          style_header={
                                         'backgroundColor': 'rgb(30, 30, 30)',
                                         'color': 'white',
-                                        'fontWeight': 'bold'
+                                        'fontWeight': 'bold',
                                         },
                          style_data={
                                     'backgroundColor': 'rgb(50, 50, 50)',
                                     'color': 'white',
-                                    'fontWeight': 'bold'
+                                    'fontWeight': 'bold',
                                     },
-                             )
+                             ),
+                        
         return tab
     
     def parse_contents(self, contents, filename):
@@ -508,9 +511,13 @@ class BaseBlock:
                     dbc.Col(html.Button('Gerar PDF',id='button-pdf', n_clicks=0), md=2),
                     dbc.Col(html.Label(id='label-pdf-gerado'), md=3)
                 ])
-            ]),
+            ], style={'margin': '1.5em'}),
             dbc.Col([
-                html.H2('Tabelas com informações')
+                dcc.Input(id='nome-membro', type='text', placeholder='', style={'display':'inline-block', 'border': '1px solid black'}),
+                #html.Div(
+                dbc.Row(id='update-table-members'),
+                #    ),
+                html.H5(id='cont-data-members')
             ])
         ])
         
@@ -545,9 +552,10 @@ class DashBoard_forms(BaseBlock):
                         
                         #state=[State("value-setter-store", "data")]
                         dcc.Store(id="n-interval-stage", data=50),
-                    ])
+                    ], style={'width': '99%'})
                 ]
             #fluid=True
+            
             )
                    
         @app.callback(
@@ -658,7 +666,7 @@ class DashBoard_forms(BaseBlock):
             prevent_initial_call=True,
         )
         def save_table(n_clickes):
-            new_data = self.df[['Nome', 'Telefone', 'Estado Civil', 'Faixa Etária', 'Rua', 'Bairro', 'Número', 'Ponto de Referência', 'conversão']]
+            new_data = self.df_new_selected[['Nome', 'Telefone', 'Estado Civil', 'Faixa Etária', 'Rua', 'Bairro', 'Número', 'Ponto de Referência', 'conversão']]
             
             return dcc.send_data_frame(new_data.to_excel, "Novos_Convertidos.xlsx", sheet_name="Sheet_name_1", 
                                        index=False)
@@ -696,8 +704,25 @@ class DashBoard_forms(BaseBlock):
             cont = len(new_db)
             
             new_data = new_db[['Nome', 'Telefone', 'Estado Civil', 'Esta sendo', 'conversão']]
-            
+            self.df_new_selected = new_db
             return self.update_table('table-table',new_data), 'Quantidade de registro conforme a filtragem: {}'.format(cont)
+        
+        @app.callback(
+            [
+             Output('update-table-members', 'children'), 
+             Output('cont-data-members', 'children')
+            ],
+            Input('nome-membro', 'value')
+            
+        )
+        def update_graphs_table_members(nome_membro):
+            new_db = self.df_members 
+            
+            cont = len(new_db)
+            
+            new_data = new_db[['Nome do Membro', 'Celular', 'Cargo Ministerial']]
+            
+            return self.update_table('table-table-members',new_data), 'Quantidade de registro conforme a filtragem: {}'.format(cont)
 
         @app.callback(Output('output-data-upload', 'children'),
                       Input('upload-data', 'contents'),

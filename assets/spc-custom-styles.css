@@ -333,7 +333,7 @@ body {
   margin: 2rem 0rem 2rem 2rem;
   line-height: 3;
   align-self: flex-end;
-  width: 80%;
+  width: 70%;
 }
 
 /*Dropdown*/
@@ -734,7 +734,7 @@ body {
     position: absolute;
     /* Top/left values mimic padding */
     left: 6px;
-    width: 45%;
+    width: 40%;
     padding-right: 10px;
     white-space: nowrap;
   }
@@ -785,7 +785,7 @@ body {
   }
 
   .output-datatable {
-    width: auto;
+    width: '90%';
   }
 }
 
