@@ -46,7 +46,7 @@ class BaseBlock:
         self.df_new_selected = None
         self.df_members = pd.read_csv(self.UPLOAD_DIRECTORY+'/cadastro de membros.csv')
 
-        self.transforme_df(self.df)
+        self.transforme_df(self.df, self.df_members)
         
         self.select_sex_columns = ['Masculino','Feminino']
 
@@ -55,6 +55,8 @@ class BaseBlock:
         self.select_conver = self.df['conversão'].drop_duplicates().values
         
         self.select_irmao_que = self.df['Esta sendo'].drop_duplicates().values
+        
+        self.name_img_member = None
         
         self.select_type = [
             'Sexo', 'Estado Civil', 'Faixa Etária', 'Esta sendo', 'conversão'
@@ -128,8 +130,12 @@ class BaseBlock:
                 )
             ]
         )
+    
+    def convert_date(self, df, columns, format_date_current, format_date_final):
+        df[columns] = pd.to_datetime(df[columns], format=format_date_current)
+        df[columns] = df[columns].dt.strftime(format_date_final)
 
-    def transforme_df(self, df):
+    def transforme_df(self, df, df_new_members):
         df['Data de Nascimento'].apply(lambda x: pd.to_datetime(x))
         df['Carimbo de data/hora'] =df['Carimbo de data/hora'].apply(lambda x: x.replace('/', '-'))
         df['Carimbo de data/hora'] = pd.to_datetime(df['Carimbo de data/hora'], format='%Y-%m-%d %H:%M:%S PM GMT-3')
@@ -148,17 +154,9 @@ class BaseBlock:
         df.loc[df.idade > 30, 'Faixa Etária'] = 'Adulto'
 
 
-        '''fig2 = go.Figure(layout={'template': 'plotly_dark'})
-        fig2.add_trace(go.Bar(x=quant.keys(), y=quant))
-        fig2.update_layout(
-            paper_bgcolor='#242424',
-            plot_bgcolor='#242424',
-            autosize=True,
-            margin=dict(l=10, r=10, t=10, b=10)
-        )'''
-        
-        '''fig = go.Figure(layout={'template': 'plotly_dark'})
-        fig.add_trace()'''
+        self.convert_date(df_new_members, columns='Data de Nascimento', format_date_current='%Y-%m-%d', format_date_final='%m/%d/%Y')
+        self.convert_date(df_new_members, columns='Data do batismo nas águas', format_date_current='%Y-%m-%d', format_date_final='%m/%d/%Y')
+        self.convert_date(df_new_members, columns='Data de Admissão', format_date_current='%Y-%m-%d', format_date_final='%m/%d/%Y')
 
     def plot_pip(self,data):
         fig = go.Figure(layout={'template': 'plotly_dark'},
@@ -182,7 +180,7 @@ class BaseBlock:
                          data=new_data.to_dict('records'),
                          page_size=8,
                          editable=False,              # allow editing of data inside all cells
-                         row_selectable="single",     # allow users to select 'multi' or 'single' rows
+                         row_selectable="multi",     # allow users to select 'multi' or 'single' rows
                         
                          style_header={
                                         'backgroundColor': 'rgb(30, 30, 30)',
@@ -215,8 +213,7 @@ class BaseBlock:
                 df_new.drop_duplicates(subset='Nome', inplace=True)
                 
                 df_new.to_csv(self.UPLOAD_DIRECTORY + '/database.csv')
-                print(df_new)
-                
+
                 self.df = df_new
                 
         except Exception as e:
@@ -420,6 +417,8 @@ class BaseBlock:
                             ], md=1)
                         ]),
                     ]),
+                    dcc.Link(id='linke-img', href=''),
+                    html.Div(id='path-image')
                 ])
     def build_card_background(self):
         return dbc.Card(id='card-background', children=[
@@ -478,7 +477,7 @@ class BaseBlock:
                             id="interval-component-card",
                             interval=2 * 1000,  # in milliseconds
                             n_intervals=50,  # start at batch 50
-                            disabled=True,
+                            disabled=False,
                 ),
                 self.build_tabs_card(),
                 dbc.Row(id='app-card'),
@@ -732,7 +731,9 @@ class DashBoard_forms(BaseBlock):
              Output('atividade', 'value'),
              Output('nascimento', 'value'),
              Output('identidade', 'value'),
-             Output('cpf', 'value')
+             Output('cpf', 'value'),
+             Output('linke-img', 'href'),
+             Output('path-image', 'children')
              ],
             #Input('update-table-members', 'derived_virtual_selected_rows'),
             #Input('update-table-members', 'derived_virtual_selected_row_ids'),
@@ -744,21 +745,75 @@ class DashBoard_forms(BaseBlock):
             prevent_initial_call=True,
         )
         def select_element_table_member(active_cell):
-            #row_id
-            if active_cell[0] != None:
+            
+            name = ''
+            atividade = ''
+            nascimento =  ''
+            identidade = ''
+            cpf = ''
+            link = ''
+            path_img = ''
+            
+            if active_cell is None:
+                active_cell = []
+                
+            
+            if active_cell != []:
                 #active_row_id = active_cell if active_cell else None
-                self.df_members['Data de Nascimento'].apply(lambda x: pd.to_datetime(x))
-                #self.df_members['Data de Nascimento'] = self.df_members['Data de Nascimento'].dt.strftime('%m/%d/%Y')
                 datas = self.df_members.loc[active_cell[0]]
                 
-                
                 name = str(datas['Nome do Membro'])
+                self.name_img_member = name
                 atividade = str(datas['Cargo Ministerial'])
                 nascimento =  str(datas['Data de Nascimento'])
                 identidade = str(datas['RG'])
                 cpf = str(datas['CPF'])
+                link = datas['Foto do membro']
                 
-                return name, atividade, nascimento, identidade, cpf
+                path_img = (
+                    html.Label('Salve a imagem do link acima neste diretorio:'),
+                    dcc.Input(id='path-img-member', type='text', value=os.path.abspath('database/imagens_membros'))
+                )
+                
+            return name, atividade, nascimento, identidade, cpf, link, path_img
+        
+        @app.callback(
+            [Output('pai', 'value'),
+             Output('mae', 'value'),
+             Output('naturalidade', 'value'),
+             Output('sexo', 'value'),
+             Output('conversao', 'value'),
+             Output('batismo-aguas', 'value')
+             ],
+            Input('table-table-members', 'derived_virtual_selected_rows'),
+            prevent_initial_call=True,
+        )
+        def select_element_table_member(active_cell):
+            
+            pai = ''
+            mae = ''
+            naturalidade =  ''
+            sexo = ''
+            conversao = ''
+            batismo = ''
+            
+            if active_cell is None:
+                active_cell = []
+                
+            
+            if active_cell != []:
+                #active_row_id = active_cell if active_cell else None
+                datas = self.df_members.loc[active_cell[0]]
+                
+                
+                pai = str(datas['Nome do pai'])
+                mae = str(datas['Nome da Mãe'])
+                naturalidade =  str(datas['Naturalidade'])
+                sexo = str(datas['Sexo'])
+                conversao = str(datas['Data de Admissão'])
+                batismo = datas['Data do batismo nas águas']
+                
+            return pai, mae, naturalidade, sexo, conversao, batismo
             
             
         @app.callback(Output('output-data-upload', 'children'),
@@ -813,7 +868,7 @@ class DashBoard_forms(BaseBlock):
             #card.editImageFundo('assets/cartao_fundo.jpeg', 'assets/fundo_fundo.jpg')
             
             #Rotacionar imagem
-            card.trataImage("database/modelos/fundo_frente.jpg")
+            card.trataImage("database/modelos/fundo_frente.jpg", img_member=self.name_img_member)
             #card.trataImage("assets/fundo_fundo.jpg", False)
             del card
             img_filename = 'database/modelos/fundo_frente.jpg'

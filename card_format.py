@@ -12,25 +12,30 @@ from reportlab.pdfgen import canvas
 from PIL import Image, ImageDraw
 import numpy as np
 
+import unicodedata
+import re
+import pathlib
+
 class Card_format:
     def __init__(self):
         super()
     
+    def remove_caracter(self,palavra):
+
+        # Unicode normalize transforma um caracter em seu equivalente em latin.
+        nfkd = unicodedata.normalize('NFKD', palavra)
+        palavraSemAcento = u"".join([c for c in nfkd if not unicodedata.combining(c)])
+    
+        # Usa expressão regular para retornar a palavra apenas com números, letras e espaço
+        return re.sub('[^a-zA-Z0-9 \\\]', '', palavraSemAcento).upper()
     
     def editImage(self, imgToEdit, nameNewImage, data=None):
         img = cv2.imread(imgToEdit)
         imgPNG = cv2.imread('assets/image.png')
-        
-        """cv2.putText(img,"ANDRE LUIZ PIRES GUIMARAES",(100,330),cv2.FONT_HERSHEY_TRIPLEX,1,0)
-        cv2.putText(img,"DIACONO",(120,420),cv2.FONT_HERSHEY_TRIPLEX,1,0)
-        cv2.putText(img,"15/07/1997",(490,420),cv2.FONT_HERSHEY_TRIPLEX,1,0)
-        cv2.putText(img,"14/03/2022",(120,510),cv2.FONT_HERSHEY_TRIPLEX,1,0)
-        cv2.putText(img,"12/03/2027",(440,510),cv2.FONT_HERSHEY_TRIPLEX,1,0)
-        cv2.putText(img,"15648154-15",(120,610),cv2.FONT_HERSHEY_TRIPLEX,1,0)
-        cv2.putText(img,"703.455.081-65",(420,610),cv2.FONT_HERSHEY_TRIPLEX,1,0)"""
-        
-        cv2.putText(img, data["name"],(100,330),cv2.FONT_HERSHEY_TRIPLEX,1,0)
-        cv2.putText(img, data["cargo"],(120,420),cv2.FONT_HERSHEY_TRIPLEX,1,0)
+                
+        #print(self.remove_caracter(data["name"]))
+        cv2.putText(img, self.remove_caracter(data["name"]),(100,330),cv2.FONT_HERSHEY_TRIPLEX,1,0)
+        cv2.putText(img, self.remove_caracter(data["cargo"]),(120,420),cv2.FONT_HERSHEY_TRIPLEX,1,0)
         cv2.putText(img, data["data_nascimento"],(490,420),cv2.FONT_HERSHEY_TRIPLEX,1,0)
         cv2.putText(img, data["emisao_card"],(120,510),cv2.FONT_HERSHEY_TRIPLEX,1,0)
         cv2.putText(img, data["venci_card"],(440,510),cv2.FONT_HERSHEY_TRIPLEX,1,0)
@@ -44,18 +49,11 @@ class Card_format:
         
     def editImageFundo(self, imgToEdit, nameNewImage, data=None):
         img = cv2.imread(imgToEdit)
-        
-        """ cv2.putText(img,"RAMILTON RIBEIRO GUIMARAES",(120,119),cv2.FONT_HERSHEY_TRIPLEX,1,0)
-        cv2.putText(img,"JUCELIA PEREIRA PIRES",(120,210),cv2.FONT_HERSHEY_TRIPLEX,1,0)
-        cv2.putText(img,"BRASILEIRO",(120,300),cv2.FONT_HERSHEY_TRIPLEX,1,0)
-        cv2.putText(img,"MASCULINO",(755,300),cv2.FONT_HERSHEY_TRIPLEX,1,0)
-        cv2.putText(img,"15/04/2012",(105,395),cv2.FONT_HERSHEY_TRIPLEX,1,0)
-        cv2.putText(img,"15/02/2014",(390,395),cv2.FONT_HERSHEY_TRIPLEX,1,0)"""
-        
-        cv2.putText(img, data["nome_pai"],(120,119),cv2.FONT_HERSHEY_TRIPLEX,1,0)
-        cv2.putText(img, data["nome_mae"],(120,210),cv2.FONT_HERSHEY_TRIPLEX,1,0)
+                
+        cv2.putText(img, self.remove_caracter(data["nome_pai"]),(120,119),cv2.FONT_HERSHEY_TRIPLEX,1,0)
+        cv2.putText(img, self.remove_caracter(data["nome_mae"]),(120,210),cv2.FONT_HERSHEY_TRIPLEX,1,0)
         cv2.putText(img, data["nacionalidade"],(120,300),cv2.FONT_HERSHEY_TRIPLEX,1,0)
-        cv2.putText(img, data["sexo"],(755,300),cv2.FONT_HERSHEY_TRIPLEX,1,0)
+        cv2.putText(img, self.remove_caracter(data["sexo"]),(755,300),cv2.FONT_HERSHEY_TRIPLEX,1,0)
         cv2.putText(img, data["conversao"],(105,395),cv2.FONT_HERSHEY_TRIPLEX,1,0)
         cv2.putText(img, data["batismo"],(390,395),cv2.FONT_HERSHEY_TRIPLEX,1,0)
         
@@ -66,11 +64,19 @@ class Card_format:
         
     
     
-    def trataImage(self, nameImg, insertImage=True):
+    def trataImage(self, nameImg, insertImage=True, img_member=None):
         img = Image.open(nameImg)
-        imgPNG = Image.open('database/modelos/image.jpg')#.convert('L')
+        
     
         if insertImage:
+            format_img = ['jpeg', 'png', 'gif', 'jpg']
+            
+            for format_arq in format_img:
+                for file in os.listdir("database/imagens_membros/"):
+                    if file.endswith(img_member+'.'+format_arq):
+                        path = "database/imagens_membros/"+file
+            
+            imgPNG = Image.open(path)#.convert('L')
             #imgPNG = imgPNG.resize((209, 259))
     
             height,width = imgPNG.size
@@ -95,7 +101,7 @@ class Card_format:
         
         img.save(nameImg)
         img.close()
-        imgPNG.close()
+        #imgPNG.close()
         
         
     def generate_pdf(self, frente, fundo):
