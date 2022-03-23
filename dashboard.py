@@ -40,13 +40,14 @@ class BaseBlock:
         self.date = self.currentDateTime.date()
         self.current_year = self.date.year
         
-        self.UPLOAD_DIRECTORY = 'database'
+        self.UPLOAD_DIRECTORY = 'assets/'
         
-        self.df = pd.read_csv(self.UPLOAD_DIRECTORY+'/database.csv')
+        self.df = pd.read_csv(self.UPLOAD_DIRECTORY+'database.csv')
         self.df_new_selected = None
-        self.df_members = pd.read_csv(self.UPLOAD_DIRECTORY+'/cadastro de membros.csv')
+        self.df_members = pd.read_csv(self.UPLOAD_DIRECTORY+'cadastro de membros.csv')
 
-        self.transforme_df(self.df, self.df_members)
+        self.transforme_df(self.df)
+        self.transforme_df_new_members(self.df_members)
         
         self.select_sex_columns = ['Masculino','Feminino']
 
@@ -135,10 +136,25 @@ class BaseBlock:
         df[columns] = pd.to_datetime(df[columns], format=format_date_current)
         df[columns] = df[columns].dt.strftime(format_date_final)
 
-    def transforme_df(self, df, df_new_members):
+    def transforme_df(self, df, transforme_data=True):
         df['Data de Nascimento'].apply(lambda x: pd.to_datetime(x))
-        df['Carimbo de data/hora'] =df['Carimbo de data/hora'].apply(lambda x: x.replace('/', '-'))
-        df['Carimbo de data/hora'] = pd.to_datetime(df['Carimbo de data/hora'], format='%Y-%m-%d %H:%M:%S PM GMT-3')
+        
+        if transforme_data:
+            df['Carimbo de data/hora'] =df['Carimbo de data/hora'].apply(lambda x: x.replace('/', '-'))
+            df['Carimbo de data/hora'] = pd.to_datetime(df['Carimbo de data/hora'], format='%d-%m-%Y %H:%M:%S')
+            
+            #print(df['Carimbo de data/hora'])
+            df['Carimbo de data/hora'] = df['Carimbo de data/hora'].dt.strftime('%Y-%m-%d %H:%M:%S')
+        #print('\n\n',df['Carimbo de data/hora'])
+        #print(df['Carimbo de data/hora']
+        
+        #df['Carimbo de data/hora'] =df['Carimbo de data/hora'].apply(lambda x: x.replace('/', '-'))
+        
+        #print(df['Carimbo de data/hora'][0].find('PM GMT-3'))
+        #if df['Carimbo de data/hora'][0].find('PM GMT-3') != -1:
+        #     df['Carimbo de data/hora'] = pd.to_datetime(df['Carimbo de data/hora'], format='%Y-%m-%d %H:%M:%S PM GMT-3')
+        #else:
+        #df['Carimbo de data/hora'] = pd.to_datetime(df['Carimbo de data/hora'], format='%Y-%m-%d %H:%M:%S')
         
         df.rename(columns={'Local de conversão': 'conversão'}, inplace=True)
         
@@ -153,10 +169,11 @@ class BaseBlock:
         df.loc[(df.idade >= 16) & (df.idade <= 30), 'Faixa Etária'] = 'Jovem'
         df.loc[df.idade > 30, 'Faixa Etária'] = 'Adulto'
 
-
-        self.convert_date(df_new_members, columns='Data de Nascimento', format_date_current='%Y-%m-%d', format_date_final='%m/%d/%Y')
-        self.convert_date(df_new_members, columns='Data do batismo nas águas', format_date_current='%Y-%m-%d', format_date_final='%m/%d/%Y')
-        self.convert_date(df_new_members, columns='Data de Admissão', format_date_current='%Y-%m-%d', format_date_final='%m/%d/%Y')
+    def transforme_df_new_members(self, df_new_members):
+        print('Batismo: ',df_new_members['Data do batismo nas águas'])
+        self.convert_date(df_new_members, columns='Data de Nascimento', format_date_current='%Y-%m-%d', format_date_final='%d/%m/%Y')
+        self.convert_date(df_new_members, columns='Data do batismo nas águas', format_date_current='%Y-%m-%d', format_date_final='%d/%m/%Y')
+        self.convert_date(df_new_members, columns='Data de Admissão', format_date_current='%Y-%m-%d', format_date_final='%d/%m/Y')
 
     def plot_pip(self,data):
         fig = go.Figure(layout={'template': 'plotly_dark'},
@@ -205,16 +222,20 @@ class BaseBlock:
                 # Assume that the user uploaded a CSV file
                 df_loaded = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
                 self.transforme_df(df_loaded)
-                '''elif 'xls' in filename:
-                # Assume that the user uploaded an excel file
-                new_df = pd.read_excel(io.BytesIO(decoded))'''
                 
                 df_new = pd.concat([self.df, df_loaded])
+                
+                df_new['Carimbo de data/hora'] =df_new['Carimbo de data/hora'].apply(lambda x: x.replace('-', '/'))
+                df_new['Carimbo de data/hora'] = pd.to_datetime(df_new['Carimbo de data/hora'], format='%Y-%m-%d %H:%M:%S')
+            
+                #print(df['Carimbo de data/hora'])
+                df_new['Carimbo de data/hora'] = df_new['Carimbo de data/hora'].dt.strftime('%d/%m/%Y %H:%M:%S')
+                
                 df_new.drop_duplicates(subset='Nome', inplace=True)
                 
-                df_new.to_csv(self.UPLOAD_DIRECTORY + '/database.csv')
+                df_new.to_csv(self.UPLOAD_DIRECTORY + 'database.csv')
 
-                self.df = df_new
+                self.df = pd.read_csv(self.UPLOAD_DIRECTORY+'database.csv')
                 
         except Exception as e:
             print(e)
@@ -295,7 +316,7 @@ class BaseBlock:
                                             max_date_allowed=self.df['Carimbo de data/hora'].max(),
                                             initial_visible_month=self.df['Carimbo de data/hora'].min(),
                                             date=self.df['Carimbo de data/hora'].min(),
-                                            display_format='MMMM D, YYYY',
+                                            display_format='DD, MMMM YYYY',
                                             style={'border':'0px solid black'}
                                         ),
                                         html.P('Data Final'),
@@ -305,7 +326,7 @@ class BaseBlock:
                                             max_date_allowed=self.df['Carimbo de data/hora'].max(),
                                             initial_visible_month=self.df['Carimbo de data/hora'].max(),
                                             date=self.df['Carimbo de data/hora'].max(),
-                                            display_format='MMMM D, YYYY',
+                                            display_format='DD, MMMM YYYY',
                                             style={'border':'0px solid black'}
                                         )
                                 ])
@@ -735,12 +756,6 @@ class DashBoard_forms(BaseBlock):
              Output('linke-img', 'href'),
              Output('path-image', 'children')
              ],
-            #Input('update-table-members', 'derived_virtual_selected_rows'),
-            #Input('update-table-members', 'derived_virtual_selected_row_ids'),
-            #Input('update-table-members', 'selected_rows'),
-            #Input('update-table-members', 'derived_virtual_indices'),
-            #Input('update-table-members', 'derived_virtual_row_ids'),
-            #Input('update-table-members', 'active_cell'),
             Input('table-table-members', 'derived_virtual_selected_rows'),
             prevent_initial_call=True,
         )
@@ -811,7 +826,7 @@ class DashBoard_forms(BaseBlock):
                 naturalidade =  str(datas['Naturalidade'])
                 sexo = str(datas['Sexo'])
                 conversao = str(datas['Data de Admissão'])
-                batismo = datas['Data do batismo nas águas']
+                batismo = str(datas['Data do batismo nas águas'])
                 
             return pai, mae, naturalidade, sexo, conversao, batismo
             
