@@ -47,7 +47,7 @@ class BaseBlock:
         self.df_members = pd.read_csv(self.UPLOAD_DIRECTORY+'cadastro de membros.csv')
 
         self.transforme_df(self.df)
-        self.transforme_df_new_members(self.df_members)
+        #self.transforme_df_new_members(self.df_members)
         
         self.select_sex_columns = ['Masculino','Feminino']
 
@@ -139,12 +139,12 @@ class BaseBlock:
     def transforme_df(self, df, transforme_data=True):
         df['Data de Nascimento'].apply(lambda x: pd.to_datetime(x))
         
-        if transforme_data:
-            df['Carimbo de data/hora'] =df['Carimbo de data/hora'].apply(lambda x: x.replace('/', '-'))
-            df['Carimbo de data/hora'] = pd.to_datetime(df['Carimbo de data/hora'], format='%d-%m-%Y %H:%M:%S')
+        
+        df['Carimbo de data/hora'] =df['Carimbo de data/hora'].apply(lambda x: x.replace('/', '-'))
+        df['Carimbo de data/hora'] = pd.to_datetime(df['Carimbo de data/hora'], format='%d-%m-%Y %H:%M:%S')
             
-            #print(df['Carimbo de data/hora'])
-            df['Carimbo de data/hora'] = df['Carimbo de data/hora'].dt.strftime('%Y-%m-%d %H:%M:%S')
+        #print(df['Carimbo de data/hora'])
+        df['Carimbo de data/hora'] = df['Carimbo de data/hora'].dt.strftime('%Y-%m-%d %H:%M:%S')
         #print('\n\n',df['Carimbo de data/hora'])
         #print(df['Carimbo de data/hora']
         
@@ -156,24 +156,23 @@ class BaseBlock:
         #else:
         #df['Carimbo de data/hora'] = pd.to_datetime(df['Carimbo de data/hora'], format='%Y-%m-%d %H:%M:%S')
         
-        df.rename(columns={'Local de conversão': 'conversão'}, inplace=True)
-        
-        #df.drop(["Faixa Etária"], axis=1, inplace=True)
-        
-        df['idade'] = self.current_year - pd.DatetimeIndex(df['Data de Nascimento']).year
-        
-        df['Faixa Etária'] = None
-        
-        df.loc[df.idade < 12, 'Faixa Etária'] = 'Criança'
-        df.loc[(df.idade >= 12) & (df.idade < 16), 'Faixa Etária'] = 'Adolecente'
-        df.loc[(df.idade >= 16) & (df.idade <= 30), 'Faixa Etária'] = 'Jovem'
-        df.loc[df.idade > 30, 'Faixa Etária'] = 'Adulto'
+        if transforme_data:
+            df.rename(columns={'Local de conversão': 'conversão'}, inplace=True)
+                        
+            df['idade'] = self.current_year - pd.DatetimeIndex(df['Data de Nascimento']).year
+            
+            df['Faixa Etária'] = None
+            
+            df.loc[df.idade < 12, 'Faixa Etária'] = 'Criança'
+            df.loc[(df.idade >= 12) & (df.idade < 16), 'Faixa Etária'] = 'Adolecente'
+            df.loc[(df.idade >= 16) & (df.idade <= 30), 'Faixa Etária'] = 'Jovem'
+            df.loc[df.idade > 30, 'Faixa Etária'] = 'Adulto'
 
-    def transforme_df_new_members(self, df_new_members):
-        print('Batismo: ',df_new_members['Data do batismo nas águas'])
+    """def transforme_df_new_members(self, df_new_members):
+        
         self.convert_date(df_new_members, columns='Data de Nascimento', format_date_current='%Y-%m-%d', format_date_final='%d/%m/%Y')
         self.convert_date(df_new_members, columns='Data do batismo nas águas', format_date_current='%Y-%m-%d', format_date_final='%d/%m/%Y')
-        self.convert_date(df_new_members, columns='Data de Admissão', format_date_current='%Y-%m-%d', format_date_final='%d/%m/Y')
+        self.convert_date(df_new_members, columns='Data de Admissão', format_date_current='%Y-%m-%d', format_date_final='%d/%m/Y')"""
 
     def plot_pip(self,data):
         fig = go.Figure(layout={'template': 'plotly_dark'},
@@ -193,7 +192,7 @@ class BaseBlock:
     def update_table(self,id_table, new_data):
         tab = dash_table.DataTable(
                          id=id_table,
-                         columns=[{'id':i, 'name': i} for i in new_data.columns],
+                         columns=[{'id':i, 'name': i, "hideable": True} for i in new_data.columns],
                          data=new_data.to_dict('records'),
                          page_size=8,
                          editable=False,              # allow editing of data inside all cells
@@ -209,11 +208,10 @@ class BaseBlock:
                                     'color': 'white',
                                     'fontWeight': 'bold',
                                     },
-                             ),
-                        
+                             ),                        
         return tab
     
-    def parse_contents(self, contents, filename):
+    def parse_contents(self, contents, filename, name_database, transforme_data = True):
         content_type, content_string = contents.split(',')
     
         decoded = base64.b64decode(content_string)
@@ -221,7 +219,8 @@ class BaseBlock:
             if 'csv' in filename:
                 # Assume that the user uploaded a CSV file
                 df_loaded = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
-                self.transforme_df(df_loaded)
+                #print(transforme_data, name_database)
+                self.transforme_df(df_loaded, transforme_data)
                 
                 df_new = pd.concat([self.df, df_loaded])
                 
@@ -233,16 +232,16 @@ class BaseBlock:
                 
                 df_new.drop_duplicates(subset='Nome', inplace=True)
                 
-                df_new.to_csv(self.UPLOAD_DIRECTORY + 'database.csv')
+                df_new.to_csv(self.UPLOAD_DIRECTORY + name_database)
 
-                self.df = pd.read_csv(self.UPLOAD_DIRECTORY+'database.csv')
+                self.df = pd.read_csv(self.UPLOAD_DIRECTORY+name_database)
                 
         except Exception as e:
             print(e)
             return html.Div([
                 'There was an error processing this file.' + str(e)
             ])
-        return html.Div(['Arquivo carregado... Atualize a pagina'])
+        return html.Div(['Arquivo carregado, a pagina será atualizada...'])
     
     def build_banner(self):
         return html.Div(
@@ -256,6 +255,7 @@ class BaseBlock:
                     dbc.Row([
                         html.H3('CONTROLE DE INFORMAÇÕES DE IRMÃOS')  
                     ]),
+                    
                     dbc.Row([
                         html.H5('ASSEMBLEIA DE DEUS CIADSETA')  
                     ]),
@@ -538,6 +538,16 @@ class BaseBlock:
             dbc.Col([
                 dcc.Input(id='nome-membro', type='text', placeholder='', style={'display':'inline-block', 'border': '1px solid black'}),
                 #html.Div(
+                html.H3('Tabela de membros'),
+                dbc.Row([
+                    html.Div([
+                              dcc.Upload(id='upload-data-table-members',
+                                           children=html.Button('Carregar novos dados', n_clicks=0),
+                                           multiple=True)
+                            ])
+                ]),
+                html.Div(id='output-data-upload-table-member'),
+                html.Br(),
                 dbc.Row(id='update-table-members'),
                 #    ),
                 html.H5(id='cont-data-members')
@@ -625,7 +635,7 @@ class DashBoard_forms(BaseBlock):
             [Input("app-tabs-card", "value")],
             [State("n-interval-stage-card", "data")],
         )
-        def render_tab_content(tab_switch, stopped_interval):
+        def render_tab_content_member(tab_switch, stopped_interval):
             if tab_switch == "tab1-card":
                 return self.build_front_of_card(), stopped_interval
             
@@ -642,7 +652,7 @@ class DashBoard_forms(BaseBlock):
                 State("n-interval-stage", "data"),
             ],
         )
-        def update_interval_state(tab_switch, cur_interval, disabled, cur_stage):
+        def update_interval_state_card(tab_switch, cur_interval, disabled, cur_stage):
             if disabled:
                 return cur_interval
         
@@ -708,7 +718,6 @@ class DashBoard_forms(BaseBlock):
              Input('location-dropdown_que', 'value'),
              
             ]
-            
         )
         def update_graphs_table(select_date_ini, select_date_fin,select_sex, select_faix, select_conv, select_type_conv):
             new_db = self.df[(self.df['Carimbo de data/hora'] >= select_date_ini) & (self.df['Carimbo de data/hora'] <= select_date_fin)]
@@ -759,7 +768,7 @@ class DashBoard_forms(BaseBlock):
             Input('table-table-members', 'derived_virtual_selected_rows'),
             prevent_initial_call=True,
         )
-        def select_element_table_member(active_cell):
+        def select_element_table_member_front(active_cell):
             
             name = ''
             atividade = ''
@@ -803,7 +812,7 @@ class DashBoard_forms(BaseBlock):
             Input('table-table-members', 'derived_virtual_selected_rows'),
             prevent_initial_call=True,
         )
-        def select_element_table_member(active_cell):
+        def select_element_table_member_verse(active_cell):
             
             pai = ''
             mae = ''
@@ -819,7 +828,6 @@ class DashBoard_forms(BaseBlock):
             if active_cell != []:
                 #active_row_id = active_cell if active_cell else None
                 datas = self.df_members.loc[active_cell[0]]
-                
                 
                 pai = str(datas['Nome do pai'])
                 mae = str(datas['Nome da Mãe'])
@@ -838,7 +846,19 @@ class DashBoard_forms(BaseBlock):
         def update_output(list_of_contents, list_of_names):
             if list_of_contents is not None:
                 children = [
-                    self.parse_contents(c, n) for c, n in zip(list_of_contents, list_of_names)]
+                    self.parse_contents(c, n, name_database) for c, n, name_database in zip(list_of_contents, list_of_names, ['database.csv'])]
+                return children
+            
+        
+        @app.callback(Output('output-data-upload-table-member', 'children'),
+                      Input('upload-data-table-members', 'contents'),
+                      State('upload-data-table-members', 'filename')
+        )
+        def update_output_members(list_of_contents, list_of_names):
+            if list_of_contents is not None:
+                transform_date = [False]
+                children = [
+                    self.parse_contents(c, n, name_database, transform) for c, n, name_database, transform, in zip(list_of_contents, list_of_names, ['cadastro de membros.csv'], transform_date)]
                 return children
             
         @app.callback(
@@ -937,7 +957,7 @@ class DashBoard_forms(BaseBlock):
             Input('button-pdf', 'n_clicks'),
             prevent_initial_call=True,
         )
-        def btn_generate_image(n_clickes):
+        def btn_generate_pdf(n_clickes):
             if n_clickes is None:
                 raise PreventUpdate
             else:
