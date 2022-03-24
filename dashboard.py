@@ -44,11 +44,11 @@ class BaseBlock:
         
         self.df = pd.read_csv(self.UPLOAD_DIRECTORY+'database.csv')
         self.df_new_selected = None
-        self.df_members = pd.read_csv(self.UPLOAD_DIRECTORY+'cadastro de membros.csv')
-
         self.transforme_df(self.df)
-        #self.transforme_df_new_members(self.df_members)
-        
+                
+        self.df_members = pd.read_csv(self.UPLOAD_DIRECTORY+'cadastro de membros.csv')
+        self.insert_column_database(self.df_members)
+                
         self.select_sex_columns = ['Masculino','Feminino']
 
         self.select_faixa_etaria_columns = ['Criança', 'Adolecente', 'Jovem','Adulto']
@@ -132,18 +132,18 @@ class BaseBlock:
             ]
         )
     
-    def convert_date(self, df, columns, format_date_current, format_date_final):
+    """def convert_date(self, df, columns, format_date_current, format_date_final):
         df[columns] = pd.to_datetime(df[columns], format=format_date_current)
-        df[columns] = df[columns].dt.strftime(format_date_final)
+        df[columns] = df[columns].dt.strftime(format_date_final)"""
 
     def transforme_df(self, df, transforme_data=True):
         df['Data de Nascimento'].apply(lambda x: pd.to_datetime(x))
         
+        self.insert_column_database(df)
         
         df['Carimbo de data/hora'] =df['Carimbo de data/hora'].apply(lambda x: x.replace('/', '-'))
         df['Carimbo de data/hora'] = pd.to_datetime(df['Carimbo de data/hora'], format='%d-%m-%Y %H:%M:%S')
             
-        #print(df['Carimbo de data/hora'])
         df['Carimbo de data/hora'] = df['Carimbo de data/hora'].dt.strftime('%Y-%m-%d %H:%M:%S')
         #print('\n\n',df['Carimbo de data/hora'])
         #print(df['Carimbo de data/hora']
@@ -168,12 +168,11 @@ class BaseBlock:
             df.loc[(df.idade >= 16) & (df.idade <= 30), 'Faixa Etária'] = 'Jovem'
             df.loc[df.idade > 30, 'Faixa Etária'] = 'Adulto'
 
-    """def transforme_df_new_members(self, df_new_members):
-        
-        self.convert_date(df_new_members, columns='Data de Nascimento', format_date_current='%Y-%m-%d', format_date_final='%d/%m/%Y')
-        self.convert_date(df_new_members, columns='Data do batismo nas águas', format_date_current='%Y-%m-%d', format_date_final='%d/%m/%Y')
-        self.convert_date(df_new_members, columns='Data de Admissão', format_date_current='%Y-%m-%d', format_date_final='%d/%m/Y')"""
-
+    def insert_column_database(self, df_new_members):
+        if not 'Cartão feito' in df_new_members.columns:
+            df_new_members['Cartão feito'] = 'Não'
+            df_new_members['Emisão Card'] = '--'
+            
     def plot_pip(self,data):
         fig = go.Figure(layout={'template': 'plotly_dark'},
                          data=[go.Pie(labels=data.keys(), values=data.values, textinfo='label+percent',
@@ -210,6 +209,15 @@ class BaseBlock:
                                     },
                              ),                        
         return tab
+    
+    def update_elements_table(self):
+        new_db = self.df_members 
+            
+        cont = len(new_db)
+            
+        new_data = new_db[['Nome do Membro', 'Celular', 
+                               'Cargo Ministerial', 'Cartão feito', 'Emisão Card']]
+        return new_data, cont
     
     def parse_contents(self, contents, filename, name_database, transforme_data = True):
         content_type, content_string = contents.split(',')
@@ -402,6 +410,7 @@ class BaseBlock:
         return dbc.Card(id='front-of-card',children=[
                     dbc.CardBody([
                         dbc.Row([
+                            html.Label(id='id-label-datas-imputs'),
                             dbc.Col([
                                 html.Label('Nome:',style={'display':'inline-block','margin-right':20})
                             ], md=2),
@@ -588,7 +597,6 @@ class DashBoard_forms(BaseBlock):
                     ], style={'width': '99%'})
                 ]
             #fluid=True
-            
             )
                    
         @app.callback(
@@ -745,19 +753,15 @@ class DashBoard_forms(BaseBlock):
              Output('cont-data-members', 'children')
             ],
             Input('nome-membro', 'value')
-            
         )
         def update_graphs_table_members(nome_membro):
-            new_db = self.df_members 
-            
-            cont = len(new_db)
-            
-            new_data = new_db[['Nome do Membro', 'Celular', 'Cargo Ministerial']]
-            
-            return self.update_table('table-table-members',new_data), 'Quantidade de registro conforme a filtragem: {}'.format(cont)
+            table, cont = self.update_elements_table()
+            return self.update_table('table-table-members',table), 'Quantidade de registro conforme a filtragem: {}'.format(cont)
 
         @app.callback(
-            [Output('nome', 'value'),
+            [
+             Output('id-label-datas-imputs', 'children'),
+             Output('nome', 'value'),
              Output('atividade', 'value'),
              Output('nascimento', 'value'),
              Output('identidade', 'value'),
@@ -769,7 +773,7 @@ class DashBoard_forms(BaseBlock):
             prevent_initial_call=True,
         )
         def select_element_table_member_front(active_cell):
-            
+            id_label = ''
             name = ''
             atividade = ''
             nascimento =  ''
@@ -785,7 +789,7 @@ class DashBoard_forms(BaseBlock):
             if active_cell != []:
                 #active_row_id = active_cell if active_cell else None
                 datas = self.df_members.loc[active_cell[0]]
-                
+                id_label = str(datas['Nome do Membro'])
                 name = str(datas['Nome do Membro'])
                 self.name_img_member = name
                 atividade = str(datas['Cargo Ministerial'])
@@ -799,7 +803,7 @@ class DashBoard_forms(BaseBlock):
                     dcc.Input(id='path-img-member', type='text', value=os.path.abspath('database/imagens_membros'))
                 )
                 
-            return name, atividade, nascimento, identidade, cpf, link, path_img
+            return id_label, name, atividade, nascimento, identidade, cpf, link, path_img
         
         @app.callback(
             [Output('pai', 'value'),
@@ -881,11 +885,11 @@ class DashBoard_forms(BaseBlock):
                                value_cpf):
             card = Card_format()
             
-            current_date = date.today()
-            current_date = current_date.strftime('%d/%m/%Y')
+            self.current_date = date.today()
+            self.current_date = self.current_date.strftime('%d/%m/%Y')
             
             #sum_date = current_date + timedelta(days=10)
-            sum_date = pd.to_datetime(current_date) + pd.DateOffset(years=5)
+            sum_date = pd.to_datetime(self.current_date) + pd.DateOffset(years=5)
             
             sum_date = sum_date.strftime('%d/%m/%Y')
             
@@ -894,7 +898,7 @@ class DashBoard_forms(BaseBlock):
                 'name':value_name,
                 'cargo': value_atividade,
                 'data_nascimento': value_nasc,
-                'emisao_card':str(current_date),
+                'emisao_card':str(self.current_date),
                 'venci_card': str(sum_date),
                 'rg':value_ident,
                 'cpf':value_cpf
@@ -953,19 +957,35 @@ class DashBoard_forms(BaseBlock):
             return 'data:image/jpg;base64,{}'.format(encoded_image.decode())
         
         @app.callback(
-            Output('label-pdf-gerado', 'children'),
-            Input('button-pdf', 'n_clicks'),
+            [
+                Output('label-pdf-gerado', 'children'),
+                Output('table-table-members', 'data')
+            ],
+            [
+                Input('button-pdf', 'n_clicks'),
+                State('id-label-datas-imputs', 'children')
+            ],
             prevent_initial_call=True,
         )
-        def btn_generate_pdf(n_clickes):
+        def btn_generate_pdf(n_clickes, id_datas_inputs):
             if n_clickes is None:
                 raise PreventUpdate
             else:
                 card = Card_format()
                 card.generate_pdf('database/modelos/fundo_frente.jpg','database/modelos/fundo_fundo.jpg')
                 
-                return 'pdf gerado com sucesso!'
-            
+                
+                #'Cartão feito', 'Emisão Card'
+                #df.loc[df.grades>50,'result']='success'
+                self.df_members.loc[self.df_members['Nome do Membro'] == str(id_datas_inputs), 'Cartão feito'] = 'Sim'
+                self.df_members.loc[self.df_members['Nome do Membro'] == str(id_datas_inputs), 'Emisão Card'] = self.current_date
+                table, _ = self.update_elements_table()
+                
+                return 'pdf gerado com sucesso!', table.to_dict('records')
+    
+    """table, cont = self.update_elements_table()
+    Output('update-table-members', 'children'), 
+    self.update_table('table-table-members',table)"""
         
     #def app_init(self):
     #    #self.callbacks(self.app)
