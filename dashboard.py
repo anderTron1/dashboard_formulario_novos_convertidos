@@ -229,6 +229,7 @@ class BaseBlock:
                 df_loaded = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
                 #print(transforme_data, name_database)
                 self.transforme_df(df_loaded, transforme_data)
+                self.insert_column_database(df_loaded)
                 
                 df_new = pd.concat([self.df, df_loaded])
                 
@@ -540,8 +541,8 @@ class BaseBlock:
                 ]),
                 html.Br(),
                 dbc.Row([
-                    dbc.Col(html.Button('Gerar PDF',id='button-pdf', n_clicks=0), md=2),
-                    dbc.Col(html.Label(id='label-pdf-gerado'), md=3)
+                    dbc.Col(html.Button('Gerar PDF',id='button-pdf', n_clicks=0), md=3),
+                    dbc.Col(html.Label(id='label-pdf-gerado'), md=4)
                 ])
             ], style={'margin': '1.5em'}),
             dbc.Col([
@@ -837,7 +838,7 @@ class DashBoard_forms(BaseBlock):
                 mae = str(datas['Nome da Mãe'])
                 naturalidade =  str(datas['Naturalidade'])
                 sexo = str(datas['Sexo'])
-                conversao = str(datas['Data de Admissão'])
+                conversao = str(datas['Conversão'])
                 batismo = str(datas['Data do batismo nas águas'])
                 
             return pai, mae, naturalidade, sexo, conversao, batismo
@@ -980,6 +981,8 @@ class DashBoard_forms(BaseBlock):
                 self.df_members.loc[self.df_members['Nome do Membro'] == str(id_datas_inputs), 'Cartão feito'] = 'Sim'
                 self.df_members.loc[self.df_members['Nome do Membro'] == str(id_datas_inputs), 'Emisão Card'] = self.current_date
                 table, _ = self.update_elements_table()
+                
+                self.df_members.to_csv(self.UPLOAD_DIRECTORY + 'database.csv')
                 
                 return 'pdf gerado com sucesso!', table.to_dict('records')
     
