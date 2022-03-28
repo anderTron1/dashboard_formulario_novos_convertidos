@@ -210,8 +210,8 @@ class BaseBlock:
                              ),                        
         return tab
     
-    def update_elements_table(self):
-        new_db = self.df_members 
+    def update_elements_table(self, db):
+        new_db = db 
             
         cont = len(new_db)
             
@@ -546,15 +546,20 @@ class BaseBlock:
                 ])
             ], style={'margin': '1.5em'}),
             dbc.Col([
-                dcc.Input(id='nome-membro', type='text', placeholder='', style={'display':'inline-block', 'border': '1px solid black'}),
                 #html.Div(
                 html.H3('Tabela de membros'),
                 dbc.Row([
-                    html.Div([
-                              dcc.Upload(id='upload-data-table-members',
-                                           children=html.Button('Carregar novos dados', n_clicks=0),
-                                           multiple=True)
-                            ])
+                        dbc.Col([
+                                 dcc.Upload(id='upload-data-table-members',
+                                               children=html.Button('Carregar novos dados', n_clicks=0),
+                                               multiple=True)
+                        ], md=5), 
+                        dbc.Col([
+                                 dcc.Dropdown(id='card-released',
+                                                 options=[{'label': i, 'value':i} for i in ['Sim', 'Não']],
+                                                 #style={'margin-top':'10px'}
+                                ),
+                        ], md=5)
                 ]),
                 html.Div(id='output-data-upload-table-member'),
                 html.Br(),
@@ -753,10 +758,18 @@ class DashBoard_forms(BaseBlock):
              Output('update-table-members', 'children'), 
              Output('cont-data-members', 'children')
             ],
-            Input('nome-membro', 'value')
+            Input('card-released', 'value')
         )
-        def update_graphs_table_members(nome_membro):
-            table, cont = self.update_elements_table()
+        def update_graphs_table_members(card_released):
+            
+            if card_released == 'Sim':
+                db = self.df_members[self.df_members['Cartão feito'] == 'Sim']
+            elif card_released == 'Não':
+                db = self.df_members[self.df_members['Cartão feito'] == 'Não']
+            else:
+                db = self.df_members
+            
+            table, cont = self.update_elements_table(db)
             return self.update_table('table-table-members',table), 'Quantidade de registro conforme a filtragem: {}'.format(cont)
 
         @app.callback(
@@ -975,18 +988,17 @@ class DashBoard_forms(BaseBlock):
                 card = Card_format()
                 card.generate_pdf('database/modelos/fundo_frente.jpg','database/modelos/fundo_fundo.jpg')
                 
-                
                 #'Cartão feito', 'Emisão Card'
                 #df.loc[df.grades>50,'result']='success'
                 self.df_members.loc[self.df_members['Nome do Membro'] == str(id_datas_inputs), 'Cartão feito'] = 'Sim'
                 self.df_members.loc[self.df_members['Nome do Membro'] == str(id_datas_inputs), 'Emisão Card'] = self.current_date
-                table, _ = self.update_elements_table()
+                table, _ = self.update_elements_table(self.df_members)
                 
-                self.df_members.to_csv(self.UPLOAD_DIRECTORY + 'database.csv')
+                self.df_members.to_csv(self.UPLOAD_DIRECTORY + 'cadastro de membros.csv')
                 
                 return 'pdf gerado com sucesso!', table.to_dict('records')
     
-    """table, cont = self.update_elements_table()
+    """table, cont = self.update_elements_table(self.df_members)
     Output('update-table-members', 'children'), 
     self.update_table('table-table-members',table)"""
         
