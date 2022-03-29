@@ -510,9 +510,40 @@ class BaseBlock:
                             n_intervals=50,  # start at batch 50
                             disabled=False,
                 ),
-                self.build_tabs_card(),
-                dbc.Row(id='app-card'),
-                dcc.Store(id="n-interval-stage-card", data=50),
+                #self.build_tabs_card(),
+                #dbc.Row(id='app-card'),
+                #dcc.Store(id="n-interval-stage-card", data=50),
+                
+                html.Div(
+                    id='tabs-card',
+                    className='tabs_card',
+                    children=[
+                        dcc.Tabs(
+                            id='app-tabs-card',
+                            value='tab1-card',
+                            className='custom-tabs-card',
+                            children=[
+                                dcc.Tab(
+                                    id='Specs-tab',
+                                    label='Frente do Cartão',
+                                    value='tab1-card',
+                                    children=[
+                                        self.build_front_of_card()
+                                    ]
+                                ),
+                                dcc.Tab(
+                                    id='Control-chart-tab',
+                                    label='Fundo do Cartão',
+                                    value="tab2-card",
+                                    children=[
+                                        self.build_card_background()
+                                    ]
+                                )
+                            ]
+                        )
+                    ]
+                ),
+                
                 html.Br(),
                 dbc.Row([
                     dbc.Col([
@@ -644,7 +675,7 @@ class DashBoard_forms(BaseBlock):
                 return cur_interval
             return cur_stage
         
-        @app.callback(
+        """@app.callback(
             [Output("app-card", "children"), Output("interval-component-card", "n_intervals")],
             [Input("app-tabs-card", "value")],
             [State("n-interval-stage-card", "data")],
@@ -672,7 +703,7 @@ class DashBoard_forms(BaseBlock):
         
             if tab_switch == "tab1-card":
                 return cur_interval
-            return cur_stage
+            return cur_stage"""
         
         @app.callback(
             Output('line-graph', 'figure'),
