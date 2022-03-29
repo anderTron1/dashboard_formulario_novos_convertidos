@@ -527,6 +527,8 @@ class BaseBlock:
                                     id='Specs-tab',
                                     label='Frente do Cartão',
                                     value='tab1-card',
+                                    className='custom-tab',
+                                    selected_className='custom-tab--selected',
                                     children=[
                                         self.build_front_of_card()
                                     ]
@@ -535,6 +537,8 @@ class BaseBlock:
                                     id='Control-chart-tab',
                                     label='Fundo do Cartão',
                                     value="tab2-card",
+                                    className='custom-tab',
+                                    selected_className='custom-tab--selected',
                                     children=[
                                         self.build_card_background()
                                     ]
@@ -574,6 +578,10 @@ class BaseBlock:
                 dbc.Row([
                     dbc.Col(html.Button('Gerar PDF',id='button-pdf', n_clicks=0), md=3),
                     dbc.Col(html.Label(id='label-pdf-gerado'), md=4)
+                ]), 
+                dbc.Row([
+                    dbc.Col(html.Label('O pdf gerado ficará na pasta:'), md=3),
+                    dbc.Col(dcc.Input(id='path-pdf-member', type='text', value=os.path.abspath('arquivo PDF')), md=2),
                 ])
             ], style={'margin': '1.5em'}),
             dbc.Col([
@@ -647,14 +655,7 @@ class DashBoard_forms(BaseBlock):
             
             elif tab_switch == "tab2":
                 return (
-                    #html.Div(
-                    #    id="status-container",
-                    #    children=[
-                    
                     self.build_member_control(),
-                    
-                    #    ],
-                    #),
                     stopped_interval,
                 )
         # Update interval
@@ -1027,7 +1028,7 @@ class DashBoard_forms(BaseBlock):
                 
                 self.df_members.to_csv(self.UPLOAD_DIRECTORY + 'cadastro de membros.csv')
                 
-                return 'pdf gerado com sucesso!', table.to_dict('records')
+                return 'pdf gerado!', table.to_dict('records')
     
     """table, cont = self.update_elements_table(self.df_members)
     Output('update-table-members', 'children'), 
