@@ -26,6 +26,7 @@ import os
 import io
 
 import datetime
+import copy 
 
 from card_format import Card_format
 
@@ -55,7 +56,7 @@ class BaseBlock:
         
         self.select_conver = self.df['conversão'].drop_duplicates().values
         
-        self.select_irmao_que = self.df['Esta sendo'].drop_duplicates().values
+        self.select_irmao_que = ['Reconciliando', 'Convertida', 'Membro', 'Sendo visitada', 'Em acompanhamento', 'Firmou em Cristo']
         
         self.name_img_member = None
         
@@ -195,7 +196,7 @@ class BaseBlock:
                          data=new_data.to_dict('records'),
                          page_size=8,
                          editable=False,              # allow editing of data inside all cells
-                         row_selectable="multi",     # allow users to select 'multi' or 'single' rows
+                         row_selectable="single",     # allow users to select 'multi' or 'single' rows
                         
                          style_header={
                                         'backgroundColor': 'rgb(30, 30, 30)',
@@ -210,13 +211,21 @@ class BaseBlock:
                              ),                        
         return tab
     
-    def update_elements_table(self, db):
+    def update_elements_table_members(self, db):
         new_db = db 
             
         cont = len(new_db)
             
         new_data = new_db[['Nome do Membro', 'Celular', 
                                'Cargo Ministerial', 'Cartão feito', 'Emisão Card']]
+        return new_data, cont
+    
+    def update_elements_table(self, db):
+        new_db = db 
+            
+        cont = len(new_db)
+            
+        new_data = new_db[['Nome', 'Telefone', 'Estado Civil', 'Esta sendo', 'conversão']]
         return new_data, cont
     
     def parse_contents(self, contents, filename, name_database, transforme_data = True):
@@ -395,7 +404,15 @@ class BaseBlock:
                                 html.Button('Baixar tabela',id='button-save-excel', n_clicks=0),
                                 dcc.Download(id='download-excel'), 
                             ])
-                        ], md=4),                    
+                        ], md=4),   
+                        dbc.Col([
+                            #html.P('Mudar condição "Esta sendo" para:'),
+                            dcc.Dropdown(id='location-dropdown_condition',
+                                                 options=[{'label': i, 'value':i} for i in self.select_irmao_que],
+                                                 #style={'margin-top':'10px'}
+                            ),
+                            dbc.Col(html.Button('Mudar condição',id='button-condition', n_clicks=0), md=3),
+                        ])
                     ]),
                     html.Div(id='output-data-upload'),
                     html.Br(),
@@ -801,8 +818,36 @@ class DashBoard_forms(BaseBlock):
             else:
                 db = self.df_members
             
-            table, cont = self.update_elements_table(db)
+            table, cont = self.update_elements_table_members(db)
             return self.update_table('table-table-members',table), 'Quantidade de registro conforme a filtragem: {}'.format(cont)
+
+        @app.callback(
+            Output('table-table', 'data'),
+            [
+                Input('button-condition', 'n_clicks'),
+                State('table-table', 'derived_virtual_selected_rows'),
+                State('location-dropdown_condition', 'value')
+            ],
+            prevent_initial_call=True,
+        )
+        def btn_condition(n_clickes, active_cell, value_dropdown):
+            if n_clickes is None:
+                raise PreventUpdate
+            else:
+                datas = self.df.loc[active_cell[0]]
+                                
+                self.df.loc[self.df['Nome'] == str(datas['Nome']), 'Esta sendo'] = value_dropdown
+                
+                table, _ = self.update_elements_table(self.df)
+                
+                df_new = copy.deepcopy(self.df)
+                
+                
+                df_new['Carimbo de data/hora'] = pd.to_datetime(df_new['Carimbo de data/hora'], format='%Y-%m-%d %H:%M:%S')
+                df_new['Carimbo de data/hora'] = df_new['Carimbo de data/hora'].dt.strftime('%d-%m-%Y %H:%M:%S')
+                df_new.to_csv(self.UPLOAD_DIRECTORY + 'database.csv')
+                
+                return table.to_dict('records')
 
         @app.callback(
             [
@@ -1024,13 +1069,13 @@ class DashBoard_forms(BaseBlock):
                 #df.loc[df.grades>50,'result']='success'
                 self.df_members.loc[self.df_members['Nome do Membro'] == str(id_datas_inputs), 'Cartão feito'] = 'Sim'
                 self.df_members.loc[self.df_members['Nome do Membro'] == str(id_datas_inputs), 'Emisão Card'] = self.current_date
-                table, _ = self.update_elements_table(self.df_members)
+                table, _ = self.update_elements_table_members(self.df_members)
                 
                 self.df_members.to_csv(self.UPLOAD_DIRECTORY + 'cadastro de membros.csv')
                 
                 return 'pdf gerado!', table.to_dict('records')
     
-    """table, cont = self.update_elements_table(self.df_members)
+    """table, cont = self.update_elements_table_members(self.df_members)
     Output('update-table-members', 'children'), 
     self.update_table('table-table-members',table)"""
         
